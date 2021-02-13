@@ -60,7 +60,11 @@
     var scene, camera, renderer, controls, light, composer,transformControls, options;
     var matArrayA = []; //内墙
     var matArrayB = []; //外墙
-    var group = new THREE.Group();
+    // var group = new THREE.Group();
+    // let group = new THREE.Object3D();
+
+    var floors = []; // 楼层
+
 
     // 初始化场景
     function initScene() {
@@ -70,7 +74,7 @@
     // 初始化相机
     function initCamera() {
       camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 10000);
-      camera.position.set(0, 50, 200);
+      camera.position.set(-2600, 600, 2600);
     }
 
     // 初始化灯光
@@ -99,19 +103,67 @@
 
     // 初始化GUI
     function initGui() {
-        options = new function () {
-            this.batchNo ='';this.qty = 0;this.qtyUom ='';this.qty2 = 0;
-            this.实时全景监控 = function() {
-                    window.open("3DVideo.html");
-                };
+
+        options = {
+            All: function () {
+                for (var j = 0; j < floors.length; j++) {
+                    floors[j].visible = true;
+                }
+            },
+            分层显示: false,
+
         };
+
         var gui = new dat.GUI();
         gui.domElement.style = 'position:absolute;top:10px;right:0px;height:600px';
-        gui.add(options, 'batchNo').name("物料批号：").listen();
-        gui.add(options, 'qty').name("数量：").listen();
-        gui.add(options, 'qtyUom').name("单位：").listen();
-        gui.add(options, 'qty2').name("件数：").listen();
-        gui.add(options, '实时全景监控');
+
+        gui.add(options, "All");
+        for (let i = 0; i < floors.length; i++)
+        {
+            let index = i;
+            options["Floor" + index] = function()
+            {
+                setFloorVisible(index);
+            };
+            gui.add(options, "Floor" + index);
+        }
+
+        gui.add(options,"分层显示").onChange(function (e) {
+            if (e)
+            {
+                moveFloor(100);
+            }
+            else
+            {
+                moveFloor(-100);
+            }
+        });
+    }
+
+    function moveFloor(offsetY) {
+        for (let i = 0; i < floors.length; i++)
+        {
+            let tween = new TWEEN.Tween(floors[i].position);
+            tween.to({y:(floors[i].position.y + i*offsetY)}, 1000);
+            // tweenCube.easing(TWEEN.Easing.Elastic.InOut);
+            tween.start();
+        }
+    }
+
+    function setFloorVisible(index) {
+
+        for (var i = 0; i < floors.length; i++)
+        {
+            var floor = floors[i];
+            if (i == index)
+            {
+                floor.visible = true;
+            }
+            else
+            {
+                floor.visible = false;
+            }
+        }
     }
 
     // 初始化渲染器
@@ -125,7 +177,7 @@
     }
 
     //创建地板
-    function createFloor() {
+    function createFloor(floorNum) {
       var loader = new THREE.TextureLoader();
       loader.load("./ThreeJs/images/floor.jpg", function(texture) {
         texture.wrapS = texture.wrapT = THREE.RepeatWrapping;
@@ -137,7 +189,10 @@
         var floor = new THREE.Mesh(floorGeometry, floorMaterial);
         floor.rotation.x = -Math.PI / 2;
         floor.name = "地面";
-        scene.add(floor);
+        floor.position.y = 50 + floorNum * 150;
+
+        floors[floorNum].add(floor);
+        scene.add(floors[floorNum]);
       });
     }
 
@@ -150,7 +205,58 @@
       cube.position.z = z;
       cube.rotation.y += angle * Math.PI; //-逆时针旋转,+顺时针
       cube.name = name;
-      scene.add(cube);
+      // scene.add(cube);
+        return cube;
+    }
+
+    //创建墙
+    function createOpCubeWall(width, height, depth, angle, material, x, y, z, name) {
+        // var cubeGeometry = new THREE.BoxGeometry(width, height, depth);
+        // material[0].opacity = 0.1;
+        // material[1].opacity = 0.1;
+        //
+        // var cube = new THREE.Mesh(cubeGeometry, material);
+        // cube.position.x = x;
+        // cube.position.y = y;
+        // cube.position.z = z;
+        // cube.rotation.y += angle * Math.PI; //-逆时针旋转,+顺时针
+        // cube.name = name;
+        // // cube.opacity = 0.1;
+        // scene.add(cube);
+
+        var geometry4 = new THREE.BoxGeometry(width, height, depth); //创建一个立方体几何对象Geometry
+        var material4 = new THREE.MeshLambertMaterial({
+            color: 0x9cb2d1,
+            transparent: true,//开启透明度
+            opacity: 0.5,//设置透明度具体值
+        }); //材质对象Material
+        var cube = new THREE.Mesh(geometry4, material4); //网格模型对象Mesh
+        // mesh4.translateY(600);//方块二沿y轴正方向平移120
+        cube.position.x = x;
+        cube.position.y = y;
+        cube.position.z = z;
+        cube.rotation.y += angle * Math.PI; //-逆时针旋转,+顺时针
+        cube.name = name;
+        return cube;
+        // scene.add(cube); //网格模型添加到场景中
+
+        // var loader = new THREE.TextureLoader();
+        // loader.load("./ThreeJs/images/windowWall.png", function(texture) {
+        //     var doorgeometry = new THREE.BoxGeometry(width, height, depth);
+        //     doorgeometry.translate(50, 0, 0);
+        //     var doormaterial = new THREE.MeshBasicMaterial({
+        //         map: texture,
+        //         color: 0xffffff
+        //     });
+        //     doormaterial.opacity = 1.0;
+        //     doormaterial.transparent = true;
+        //     var door = new THREE.Mesh(doorgeometry, doormaterial);
+        //     door.position.set(x, y, z);
+        //     door.rotation.y += angle * Math.PI; //-逆时针旋转,+顺时针
+        //     door.name = name;
+        //     scene.add(door);
+        // });
+
     }
 
     //创建门_左侧
@@ -250,6 +356,9 @@
 
     //创建墙纹理
      function createWallMaterail(){
+         matArrayA = [];
+         matArrayB = [];
+
          matArrayA.push(new THREE.MeshPhongMaterial({color: 0xafc0ca}));  //前  0xafc0ca :灰色
          matArrayA.push(new THREE.MeshPhongMaterial({color: 0xafc0ca}));  //后
          matArrayA.push(new THREE.MeshPhongMaterial({color: 0xd6e4ec}));  //上  0xd6e4ec： 偏白色
@@ -268,37 +377,58 @@
 
     // 初始化模型
     function initContent() {
-      createFloor();
-      createWallMaterail();
-      createCubeWall(10, 200, 1400, 0, matArrayB, -1295, 100, 0, "墙面");
-      createCubeWall(10, 200, 1400, 1, matArrayB, 1295, 100, 0, "墙面");
-      createCubeWall(10, 200, 2600, 1.5, matArrayB, 0, 100, -700, "墙面");
-      //创建挖了门的墙
-      var wall = returnWallObject(2600, 200, 10, 0, matArrayB, 0, 100, 700, "墙面");
-      var door_cube1 = returnWallObject(200, 180, 10, 0, matArrayB, -600, 90, 700, "前门1");
-      var door_cube2 = returnWallObject(200, 180, 10, 0, matArrayB, 600, 90, 700, "前门2");
-      var window_cube1 = returnWallObject(100, 100, 10, 0, matArrayB, -900, 90, 700, "窗户1");
-      var window_cube2 = returnWallObject(100, 100, 10, 0, matArrayB, 900, 90, 700, "窗户2");
-      var window_cube3 = returnWallObject(100, 100, 10, 0, matArrayB, -200, 90, 700, "窗户3");
-      var window_cube4 = returnWallObject(100, 100, 10, 0, matArrayB, 200, 90, 700, "窗户4");
-      var objects_cube = [];
-      objects_cube.push(door_cube1);
-      objects_cube.push(door_cube2);
-      objects_cube.push(window_cube1);
-      objects_cube.push(window_cube2);
-      objects_cube.push(window_cube3);
-      objects_cube.push(window_cube4);
-      createResultBsp(wall, objects_cube);
-      //为墙面安装门
-      createDoor_left(100, 180, 2, 0, -700, 90, 700, "左门1");
-      createDoor_right(100, 180, 2, 0, -500, 90, 700, "右门1");
-      createDoor_left(100, 180, 2, 0, 500, 90, 700, "左门2");
-      createDoor_right(100, 180, 2, 0, 700, 90, 700, "右门2");
-      //为墙面安装窗户
-      createWindow(100, 100, 2, 0, -900, 90, 700, "窗户");
-      createWindow(100, 100, 2, 0, 900, 90, 700, "窗户");
-      createWindow(100, 100, 2, 0, -200, 90, 700, "窗户");
-      createWindow(100, 100, 2, 0, 200, 90, 700, "窗户");
+        for (var i = 0; i < 5; i++)
+        {
+            floors.push(new THREE.Object3D());
+            createWall(i);
+        }
+    }
+
+    function createWall(floorNum) {
+
+        var y = 100+floorNum * 150;
+
+        createFloor(floorNum);
+        createWallMaterail();
+
+
+        floors[floorNum].add(createCubeWall(10, 100, 1400, 0, matArrayB, -1295, y, 0, "墙面"));
+        floors[floorNum].add(createCubeWall(10, 100, 1400, 1, matArrayB, 1295, y, 0, "墙面"));
+        floors[floorNum].add(createCubeWall(10, 100, 2600, 1.5, matArrayB, 0, y, -700, "墙面"));
+        floors[floorNum].add(createCubeWall(2600, 100, 10, 0, matArrayB, 0, y, 700, "墙面"));
+
+        // 创建玻璃窗
+        floors[floorNum].add(createOpCubeWall(2, 50, 1390, 0, matArrayB, -1290, y + 75, 0, "透明墙面"));
+        floors[floorNum].add(createOpCubeWall(2, 50, 1390, 1, matArrayB, 1290, y + 75, 0, "透明墙面"));
+        floors[floorNum].add(createOpCubeWall(2, 50, 2580, 1.5, matArrayB, 0, y + 75, -695, "透明墙面"));
+        floors[floorNum].add(createOpCubeWall(2580, 50, 2, 0, matArrayB, 0, y + 75, 695, "透明墙面"));
+
+        //创建挖了门的墙
+        // var wall = returnWallObject(2600, 100, 10, 0, matArrayB, 0, y, 700, "墙面");
+        // // var door_cube1 = returnWallObject(200, 180, 10, 0, matArrayB, -600, 90, 700, "前门1");
+        // // var door_cube2 = returnWallObject(200, 180, 10, 0, matArrayB, 600, 90, 700, "前门2");
+        // var window_cube1 = returnWallObject(100, 50, 10, 0, matArrayB, -900, y-10, 700, "窗户1");
+        // var window_cube2 = returnWallObject(100, 50, 10, 0, matArrayB, 900, y-10, 700, "窗户2");
+        // var window_cube3 = returnWallObject(100, 50, 10, 0, matArrayB, -200, y-10, 700, "窗户3");
+        // var window_cube4 = returnWallObject(100, 50, 10, 0, matArrayB, 200, y-10, 700, "窗户4");
+        // var objects_cube = [];
+        // // objects_cube.push(door_cube1);
+        // // objects_cube.push(door_cube2);
+        // objects_cube.push(window_cube1);
+        // objects_cube.push(window_cube2);
+        // objects_cube.push(window_cube3);
+        // objects_cube.push(window_cube4);
+        // createResultBsp(wall, objects_cube);
+        //为墙面安装门
+        // createDoor_left(100, 180, 2, 0, -700, 90, 700, "左门1");
+        // createDoor_right(100, 180, 2, 0, -500, 90, 700, "右门1");
+        // createDoor_left(100, 180, 2, 0, 500, 90, 700, "左门2");
+        // createDoor_right(100, 180, 2, 0, 700, 90, 700, "右门2");
+        //为墙面安装窗户
+        // createWindow(100, 50, 2, 0, -900, y-10, 700, "窗户");
+        // createWindow(100, 50, 2, 0, 900, y-10, 700, "窗户");
+        // createWindow(100, 50, 2, 0, -200, y-10, 700, "窗户");
+        // createWindow(100, 50, 2, 0, 200, y-10, 700, "窗户");
     }
 
     // 初始化轨迹球控件
@@ -309,7 +439,7 @@
       // 视角最小距离
       controls.minDistance = 100;
       // 视角最远距离
-      controls.maxDistance = 1000;
+      controls.maxDistance = 5000;
       // 最大角度
       controls.maxPolarAngle = Math.PI / 2.2;
       controls.target = new THREE.Vector3(50,50,0);
@@ -433,30 +563,31 @@
     function init() {
       initMat();
       initScene();
-      addSkybox( 10000, scene );
-      addVideoPlane( 0, 60, -690, 200, 100 ,scene, 'video' );
+      // addSkybox( 10000, scene );
+      // addVideoPlane( 0, 60, -690, 200, 100 ,scene, 'video' );
       initCamera();
       initRenderer();
       initContent();
       initLight();
       initControls();
       initGui();
-      initEcharts();
+      // initEcharts();
 
-      addArea(0,0,1000,500,scene,"ID1$库区1号","FF0000",20,"左对齐");
+      // addArea(0,0,1000,500,scene,"ID1$库区1号","FF0000",20,"左对齐");
+      //
+      // addShelf(scene);
+      //
+      // //添加货物
+      // var shelf_list = GET_SHELF_LIST();
+      // for(var i = 1; i <= GET_LAYER_NUM(); i++){
+      //     for(var j = 1; j <= GET_COLUMN_NUM(); j++){
+      //         for(var k = 1; k <= shelf_list.length; k++) {
+      //             addOneUnitCargos(shelf_list[k-1].shelfId, i, j, scene);
+      //         }
+      //     }
+      // }
 
-      addShelf(scene);
-
-      //添加货物
-      var shelf_list = GET_SHELF_LIST();
-      for(var i = 1; i <= GET_LAYER_NUM(); i++){
-          for(var j = 1; j <= GET_COLUMN_NUM(); j++){
-              for(var k = 1; k <= shelf_list.length; k++) {
-                  addOneUnitCargos(shelf_list[k-1].shelfId, i, j, scene);
-              }
-          }
-      }
-
+        addCargo(200,50,0,GET_BOX_SIZE(),GET_BOX_SIZE(),GET_BOX_SIZE(),scene,"");
       //添加选中时的蒙版
       composer = new THREE.ThreeJs_Composer(renderer, scene, camera, options);
 
